@@ -22,9 +22,9 @@ fn main() -> Result<(), Error> {
     let mut file = File::open(matches.value_of("input").unwrap())?;
     let mut content = vec![];
     file.read_to_end(&mut content)?;
-    let record = gopro_telemetry::gps_parser::parse(&content);
+    let records = gopro_telemetry::gps_parser::parse(&content).unwrap();
 
-    println!("{:?}", &record);
+    println!("{:?}", &records[..]);
 
     Ok(())
 }

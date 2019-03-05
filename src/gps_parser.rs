@@ -1,30 +1,10 @@
 use nom::{
+    self,
     be_u8, be_u16,
 };
-
-// The Protocol
-// Data starts with a label that describes the data following it. Values are all big endian, and floats are IEEE 754. Everything is packed to 4 bytes where applicable, padded with zeroes so it's 32-bit aligned.
-
-// Labels - human readable types of proceeding data
-// Type - single ascii character describing data
-// Size - how big is the data type
-// Count - how many values are we going to get
-// Length = size * count
-struct Label {
-    kind: [u8; 4],
-    ty: u8,
-    size: u32,
-}
-
-// 00000000: 4445 5643 0001 10ac 4456 4944 4c04 0001  DEVC....DVIDL...
-// 00000010: 0000 0001 4456 4e4d 6301 0006 4361 6d65  ....DVNMc...Came
-// 00000020: 7261 0000 5449 434b 4c04 0001 0000 103a  ra..TICKL......:
-// 00000030: 5354 524d 0001 0530 5453 4d50 4c04 0001  STRM...0TSMPL...
-// 00000040: 0000 00c8 5449 434b 4c04 0001 0000 103a  ....TICKL......:
-
 #[derive(Debug)]
 pub struct Record<'a> {
-    kind: String,
+    kind: &'a [u8],
     size_hint: u8,
     size: u8,
     num: u16,
@@ -58,14 +38,14 @@ fn padding(len: usize) -> usize {
 named!(record<&[u8], Record>,
        do_parse!(
            // TODO(richo) Do we want to reject invalid messages here?
-           label: dbg_dmp!(take!(4))  >>
+           label: take!(4)  >>
            size_hint: be_u8 >>
            size: be_u8      >>
            num: be_u16      >>
            data: take!(calculate_data_length(size_hint, size, num)) >>
            take!(padding(calculate_data_length(size_hint, size, num))) >>
            (Record {
-               kind: String::from_utf8(label.to_vec()).unwrap(),
+               kind: label,
                size_hint,
                size,
                num,
@@ -77,8 +57,113 @@ named!(record<&[u8], Record>,
 named!(records<&[u8], Vec<Record> >,
        many1!(complete!(record)));
 
-pub fn parse(data: &[u8]) -> Vec<Record> {
-    records(data).unwrap().1
+pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
+    match records(data) {
+        Ok((left, data)) => {
+            assert!(left.len() == 0);
+            Ok(data
+               .into_iter()
+               .map(|x| x.parse())
+               .collect()
+            )
+        },
+        Err(e) => Err(e),
+    }
+}
+
+// #[allow(non_camel_case_names)]
+#[derive(Debug)]
+pub enum Message {
+    ACCL,
+    DEVC,
+    DVID,
+    DVNM,
+    EMPT,
+    GPS5,
+    GPSF,
+    GPSP,
+    GPSU,
+    GYRO,
+    SCAL,
+    SIUN,
+    STRM,
+    TMPC,
+    TSMP,
+    UNIT,
+    TICK,
+    STNM,
+    ISOG,
+    SHUT,
+}
+
+impl<'a> Record<'a> {
+    fn parse(self) -> Message {
+        match &self.kind[..] {
+            b"ACCL" => {
+                Message::ACCL
+            },
+            b"DEVC" => {
+                Message::DEVC
+            },
+            b"DVID" => {
+                Message::DVID
+            },
+            b"DVNM" => {
+                Message::DVNM
+            },
+            b"EMPT" => {
+                Message::EMPT
+            },
+            b"GPS5" => {
+                Message::GPS5
+            },
+            b"GPSF" => {
+                Message::GPSF
+            },
+            b"GPSP" => {
+                Message::GPSP
+            },
+            b"GPSU" => {
+                Message::GPSU
+            },
+            b"GYRO" => {
+                Message::GYRO
+            },
+            b"SCAL" => {
+                Message::SCAL
+            },
+            b"SIUN" => {
+                Message::SIUN
+            },
+            b"STRM" => {
+                Message::STRM
+            },
+            b"TMPC" => {
+                Message::TMPC
+            },
+            b"TSMP" => {
+                Message::TSMP
+            },
+            b"UNIT" => {
+                Message::UNIT
+            },
+            b"TICK" => {
+                Message::TICK
+            },
+            b"STNM" => {
+                Message::STNM
+            },
+            b"ISOG" => {
+                Message::ISOG
+            },
+            b"SHUT" => {
+                Message::SHUT
+            },
+            other => {
+                panic!("unknown block: {}", String::from_utf8(other.to_vec()).unwrap());
+            }
+        }
+    }
 }
 // ACCL - accelerometer reading x/y/z
 // DEVC - device
