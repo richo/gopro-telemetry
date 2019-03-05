@@ -1,14 +1,27 @@
+use std::fmt;
 use nom::{
     self,
     be_u8, be_u16,
 };
-#[derive(Debug)]
+
 pub struct Record<'a> {
     kind: &'a [u8],
     size_hint: u8,
     size: u8,
     num: u16,
     data: &'a [u8],
+}
+
+impl<'a> fmt::Debug for Record<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.debug_struct("Record")
+            .field("kind", &String::from_utf8(self.kind.to_vec()).unwrap_or_else(|_| "____".into()))
+            .field("size_hint", &(self.size_hint as char))
+            .field("size", &self.size)
+            .field("num", &self.num)
+            .field("data", &"< elided >")
+            .finish()
+    }
 }
 
 fn calculate_data_length(size_hint: u8, size: u8, num: u16) -> usize {
@@ -63,7 +76,7 @@ pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
             assert!(left.len() == 0);
             Ok(data
                .into_iter()
-               .map(|x| x.parse())
+               .map(|x|{ debug!("{:?}", &x); x.parse()})
                .collect()
             )
         },
@@ -165,19 +178,3 @@ impl<'a> Record<'a> {
         }
     }
 }
-// ACCL - accelerometer reading x/y/z
-// DEVC - device
-// DVID - device ID, possibly hard-coded to 0x1
-// DVNM - devicde name, string "Camera"
-// EMPT - empty packet
-// GPS5 - GPS data (lat, lon, alt, speed, 3d speed)
-// GPSF - GPS fix (none, 2d, 3d)
-// GPSP - GPS positional accuracy in cm
-// GPSU - GPS acquired timestamp; potentially different than "camera time"
-// GYRO - gryroscope reading x/y/z
-// SCAL - scale factor, a multiplier for subsequent data
-// SIUN - SI units; strings (m/s², rad/s)
-// STRM - ¯\_(ツ)_/¯
-// TMPC - temperature
-// TSMP - total number of samples
-// UNIT - alternative units; strings (deg, m, m/s)

@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
     file.read_to_end(&mut content)?;
     let records = gopro_telemetry::gps_parser::parse(&content).unwrap();
 
-    println!("{:?}", &records[..]);
+    println!("{:?}", &records[0]);
 
     Ok(())
 }
