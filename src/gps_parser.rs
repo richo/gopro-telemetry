@@ -75,7 +75,7 @@ named!(record<&[u8], Record>,
 );
 
 named!(records<&[u8], Vec<Record> >,
-       many1!(record));
+       many1!(complete!(record)));
 
 pub fn parse(data: &[u8]) -> Vec<Record> {
     records(data).unwrap().1
