@@ -2,13 +2,22 @@ use std::fmt;
 use nom::{
     self,
     be_u8, be_u16, be_u32,
+    be_i8, be_i16, be_i32,
+    be_f32, be_f64,
 };
 
 macro_rules! parser {
     // TODO(richo) Can we do the lookup for the size_hint automatically?
-    ($name:ident(L => $ty:ty)) => {
-        inner_parser!($name, be_u32, "L", $ty);
-    }
+    ($name:ident(L => $ty:ty)) => { inner_parser!($name, be_u32, "L", $ty); };
+    ($name:ident(l => $ty:ty)) => { inner_parser!($name, be_i32, "l", $ty); };
+    ($name:ident(S => $ty:ty)) => { inner_parser!($name, be_u16, "S", $ty); };
+    ($name:ident(s => $ty:ty)) => { inner_parser!($name, be_i16, "s", $ty); };
+    // TODO(richo) this doesn't really work gracefully, since this should be turned into an actual
+    // String type probably?
+    ($name:ident(c => $ty:ty)) => { inner_parser!($name, be_u8, "c", $ty); };
+    // TODO(richo) figure out a callback syntax to deal with parsing dates out?
+    // ($name:ident(c => $ty:ty)) => { inner_parser!($name, be_u8, "c", $ty); };
+    ($name:ident(f => $ty:ty)) => { inner_parser!($name, be_f32, "f", $ty); };
 }
 
 macro_rules! inner_parser {
@@ -28,6 +37,28 @@ macro_rules! inner_parser {
         );
     }
 }
+// parser!(DEVC(\u{0}', size:
+// parser!(STRM(\u{0}', size:
+
+parser!(ACCL(s => ACCL));
+parser!(DVID(L => DVID));
+parser!(DVNM(c => DVNM));
+parser!(GPS5(l => GPS5));
+parser!(GPSF(L => GPSF));
+parser!(GPSP(S => GPSP));
+// parser!(GPSU(U => GPSU));
+parser!(GYRO(s => GYRO));
+parser!(ISOG(f => ISOG));
+parser!(SCALl(l => SCALl));
+parser!(SCALs(s => SCALs));
+parser!(SHUT(f => SHUT));
+parser!(SIUN(c => SIUN));
+parser!(STNM(c => STNM));
+parser!(TICK(L => TICK));
+parser!(TMPC(f => TMPC));
+parser!(TSMP(L => TSMP));
+parser!(UNIT(c => UNIT));
+
 
 fn num_values(size_hint: u8, num: u16) -> usize {
     if size_hint == 0 {
@@ -51,8 +82,6 @@ fn padding(size_hint: u8, size: u8, num: u16) -> usize {
         4 - padding
     }
 }
-
-parser!(DVID(L => DVID));
 
 // pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
 //     match records(data) {
@@ -80,24 +109,25 @@ pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
 
 #[derive(Debug)]
 pub enum Message {
-    ACCL,
+    ACCL { data: Vec<i16> },
     DEVC,
     DVID { data: Vec<u32> },
-    DVNM,
+    DVNM { data: Vec<u8> },
     EMPT,
-    GPS5,
-    GPSF,
-    GPSP,
+    GPS5 { data: Vec<i32> },
+    GPSF { data: Vec<u32>},
+    GPSP { data: Vec<u16> },
     GPSU,
-    GYRO,
-    SCAL,
-    SIUN,
+    GYRO { data: Vec<i16> },
+    SCALl { data: Vec<i32> },
+    SCALs { data: Vec<i16> },
+    SIUN { data: Vec<u8> },
     STRM,
-    TMPC,
-    TSMP,
-    UNIT,
-    TICK,
-    STNM,
-    ISOG,
-    SHUT,
+    TMPC { data: Vec<f32> },
+    TSMP { data: Vec<u32> },
+    UNIT { data: Vec<u8> },
+    TICK { data: Vec<u32>},
+    STNM { data: Vec<u8> },
+    ISOG { data: Vec<f32> },
+    SHUT { data: Vec<f32> },
 }
