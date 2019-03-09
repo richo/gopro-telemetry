@@ -24,7 +24,6 @@ macro_rules! inner_parser {
     ($name:ident, $parser:ident, $hint:expr, $ty:ty) => {
         named!($name<&[u8], Message>,
                do_parse!(
-                   tag!(stringify!($name))  >>
                    size_hint: tag!($hint) >>
                    size: be_u8      >>
                    num: be_u16      >>
@@ -37,6 +36,19 @@ macro_rules! inner_parser {
         );
     }
 }
+named!(DEVC<&[u8], Message>,
+       do_parse!(
+           tag!("DEVC")  >>
+           size_hint: tag!("\x00") >>
+           size: be_u8      >>
+           num: be_u16      >>
+           data: take!(size as u16 * num) >>
+           take!(padding(size_hint[0], size, num)) >>
+           (Message::DEVC {
+               children: outer_parser(data)?.1
+           })
+       )
+);
 // parser!(DEVC(\u{0}', size:
 // parser!(STRM(\u{0}', size:
 
@@ -58,6 +70,30 @@ parser!(TICK(L => TICK));
 parser!(TMPC(f => TMPC));
 parser!(TSMP(L => TSMP));
 parser!(UNIT(c => UNIT));
+
+named!(outer_parser<&[u8], Vec<Message> >,
+       many1!(complete!(
+       switch!(take!(4),
+               b"DEVC" => call!(DEVC) |
+               b"ACCL" => call!(ACCL) |
+               b"ACCL" => call!(ACCL) |
+               b"DVID" => call!(DVID) |
+               b"DVNM" => call!(DVNM) |
+               b"GPS5" => call!(GPS5) |
+               b"GPSF" => call!(GPSF) |
+               b"GPSP" => call!(GPSP) |
+               b"GYRO" => call!(GYRO) |
+               b"ISOG" => call!(ISOG) |
+               b"SCAL" => alt!(SCALl | SCALs) |
+               b"SHUT" => call!(SHUT) |
+               b"SIUN" => call!(SIUN) |
+               b"STNM" => call!(STNM) |
+               b"TICK" => call!(TICK) |
+               b"TMPC" => call!(TMPC) |
+               b"TSMP" => call!(TSMP) |
+               b"UNIT" => call!(UNIT)
+       )))
+);
 
 
 fn num_values(size_hint: u8, num: u16) -> usize {
@@ -98,10 +134,10 @@ fn padding(size_hint: u8, size: u8, num: u16) -> usize {
 // }
 
 pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
-    match DVID(data) {
+    match outer_parser(data) {
         Ok((left, data)) => {
             assert!(left.len() == 0);
-            Ok(vec![data])
+            Ok(data)
         },
         Err(e) => Err(e),
     }
@@ -110,7 +146,7 @@ pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
 #[derive(Debug)]
 pub enum Message {
     ACCL { data: Vec<i16> },
-    DEVC,
+    DEVC { children: Vec<Message> },
     DVID { data: Vec<u32> },
     DVNM { data: Vec<u8> },
     EMPT,
