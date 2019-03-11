@@ -1,4 +1,3 @@
-use std::fmt;
 use nom::{
     self,
     be_u8, be_u16, be_u32,
@@ -24,6 +23,7 @@ macro_rules! inner_parser {
     ($name:ident, $parser:ident, $hint:expr, $ty:ty) => {
         named!($name<&[u8], Message>,
                do_parse!(
+                   _name: tag!(stringify!($name)) >>
                    size_hint: tag!($hint) >>
                    size: be_u8      >>
                    num: be_u16      >>
@@ -42,10 +42,10 @@ named!(DEVC<&[u8], Message>,
            size_hint: tag!("\x00") >>
            size: be_u8      >>
            num: be_u16      >>
-           data: take!(size as u16 * num) >>
+           body: take!(size as u16 * num) >>
            take!(padding(size_hint[0], size, num)) >>
            (Message::DEVC {
-               children: outer_parser(data)?.1
+               children: outer_parser(body)?.1
            })
        )
 );
@@ -71,9 +71,10 @@ parser!(TMPC(f => TMPC));
 parser!(TSMP(L => TSMP));
 parser!(UNIT(c => UNIT));
 
+
 named!(outer_parser<&[u8], Vec<Message> >,
        many1!(complete!(
-       switch!(take!(4),
+       switch!(peek!(take!(4)),
                b"DEVC" => call!(DEVC) |
                b"ACCL" => call!(ACCL) |
                b"ACCL" => call!(ACCL) |
@@ -135,6 +136,16 @@ fn padding(size_hint: u8, size: u8, num: u16) -> usize {
 
 pub fn parse(data: &[u8]) -> Result<Vec<Message>, nom::Err<&[u8]>> {
     match outer_parser(data) {
+        Ok((left, data)) => {
+            assert!(left.len() == 0);
+            Ok(data)
+        },
+        Err(e) => Err(e),
+    }
+}
+
+pub fn parse_dvid(data: &[u8]) -> Result<Message, nom::Err<&[u8]>> {
+    match DVID(data) {
         Ok((left, data)) => {
             assert!(left.len() == 0);
             Ok(data)

@@ -6,7 +6,7 @@ extern crate nom;
 
 use std::io::Read;
 
-use mp4parse::{self, MediaContext, TrackType};
+use mp4parse::{self, MediaContext};
 use failure::{format_err, Error};
 
 pub mod gps_parser;
