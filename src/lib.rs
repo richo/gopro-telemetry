@@ -34,11 +34,3 @@ pub fn test_read<T: Read>(mut reader: &mut T) -> Result<VideoData, Error> {
         .map_err(|err| format_err!("Error reading mp4: {:?}", err))?;
     Ok(VideoData { ctx })
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
