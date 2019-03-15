@@ -154,7 +154,7 @@ pub fn parse_dvid(data: &[u8]) -> Result<Message, nom::Err<&[u8]>> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Message {
     ACCL { data: Vec<i16> },
     DEVC { children: Vec<Message> },
